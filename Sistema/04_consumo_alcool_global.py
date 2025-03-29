@@ -100,6 +100,16 @@ def grafico3():
     fig = px.pie(df_regioes, names='Região' , values='Consumo Total', title='Consumo total por região do mundo')
     return fig.to_html() + "<br/><a href='/'>Voltar ao Inicio</a>"
 
+@app.route('/grafico4')
+def grafico4():
+    conn = sqlite3.connect('C:/Users/noturno/Desktop/estenio/Sistema/consumo_alcool.db')
+    df = pd.read_sql_query('SELECT beer_servings, spirit_servings, wine_servings FROM drinks', conn)
+    conn.close()
+    medias = df.mean().reset_index()
+    medias.columns = ['tipo', 'Média']
+    fig = px.pie(medias, names='tipo', values='Média')
+    return fig.to_html() + '<br><a> href="/">voltar ao inicio</a>'
+                
 
 # Inicia o servidor flask
 if __name__ == '__main__':
