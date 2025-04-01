@@ -32,11 +32,11 @@ html_template = '''
     </ul>
     <h2> Parte 02 </h2>
     <ul>
-        <li><a heref="/comparar"> Comparar </a></li>
-        <li><a heref="/upload_avengers"> Upload do CSV  </a></li>
-        <li><a heref="/apagar_avengers"> Apagar Tabela Avengers  </a></li>
-        <li><a heref="/atribuir_paises_avengers"> Atribuir Paises  </a></li>
-        <li><a heref="/avengers_vs_drinks"> V.A.A (Vingadores Alcoolicos Anonimos)  </a></li>
+        <li><a href="/comparar"> Comparar </a></li>
+        <li><a href="/upload_avengers"> Upload do CSV  </a></li>
+        <li><a href="/apagar_avengers"> Apagar Tabela Avengers  </a></li>
+        <li><a href="/atribuir_paises_avengers"> Atribuir Paises  </a></li>
+        <li><a href="/avengers_vs_drinks"> V.A.A (Vingadores Alcoolicos Anonimos)  </a></li>
     </ul>        
 '''
 # Rota inicial com o links para os graficos
@@ -62,7 +62,6 @@ def grafico1():
         title='Top 10 paises com maior consumo de Alcool')
     
     return fig.to_html()
-
 
 # Media do consumo por tipo global 
 
@@ -100,7 +99,78 @@ def grafico3():
     fig = px.pie(df_regioes, names='Região' , values='Consumo Total', title='Consumo total por região do mundo')
     return fig.to_html() + "<br/><a href='/'>Voltar ao Inicio</a>"
 
+@app.route('/grafico4')
+def grafico4():
+    conn = sqlite3.connect('C:/Users/noturno/Desktop/estenio/Sistema/consumo_alcool.db')
+    df = pd.read_sql_query('SELECT beer_servings, spirit_servings, wine_servings FROM drinks', conn)
+    conn.close()
+    medias = df.mean().reset_index()
+    medias.columns = ['tipo', 'Média']
+    fig = px.pie(medias, names='tipo', values='Média')
+    return fig.to_html() + '<br><a> href="/">voltar ao inicio</a>'
+                
+@app.route('/comparar', methods=['GET','POST'])
+def comparar():
+    opcoes = ['beer_servings','spirit_servings','wine_servings','total_litres_of_pure_alcohol']
+
+    if request.method == 'POST':
+        eixo_x = request.form.get('eixo_x')
+        eixo_y= request.form.get('eixo_y')
+
+        if eixo_x == eixo_y:
+            return "<h3>Selecione variaveis diferentes!.</h3>"
+
+        conn = sqlite3.connect('C:/Users/noturno/Desktop/estenio/Sistema/consumo_alcool.db')
+
+        df = pd.read_sql_query('SELECT country, {}, {} FROM drinks'.format(eixo_x,eixo_y), conn)
+        conn.close()
+
+        fig = px.scatter(df, x=eixo_x, y=eixo_y,title=f'Comparação entre {eixo_x} e {eixo_y}')
+
+
+        fig.update_traces(textposition="top center")
+        return fig.to_html() + '<br><a> href="/">voltar ao inicio</a>'
+    
+    return render_template_string('''
+    <h2>Comparar Campos</h2>
+    <form method="POST">
+         <label for="eixo_x"> Eixo X: </label>
+         <select name="eixo_x">
+            {% for col in opcoes %}             
+                <option value="{{ col }}"> {{ col }} </option> 
+            {% endfor %}                     
+         </select><br><br>
+         <label for="eixo_y"> Eixo Y: </label>
+         <select name="eixo_y">
+            {% for col in opcoes %}             
+                <option value="{{ col }}"> {{ col }} </option> 
+            {% endfor %}                     
+         </select><br><br> 
+         <input type="submit" value=" - Comparar - ">                                                                                             
+    </form>                          
+''', opcoes=opcoes)
+
+@app.route('/upload_avengers', methods=['GET','POST'])
+def upload_avenger():
+    if request.method == 'POST':
+       file = request.files['file']
+       if not file:
+           return "<h3>Nenhum arquivo enviado<h3><br><a href='/upload_avenger'>voltar ao inicio</a>"
+       df_avengers = pd.read_csv(file, encoding='latin1')
+       conn =  sqlite3.connect('C:/Users/noturno/Desktop/estenio/Sistema/consumo_alcool.db')
+       df_avengers.to_sql('avengers', conn, if_exists='replace', index=False)
+       conn.commit()
+       conn.close()
+       return '<h3>arquivo inserido com sucesso!</h3><a href='/'>voltar</a>'
+    return '''
+       <h2>Upload do arquivo Avengers<h2>
+       <form method="POST" enctype="multipart/form-data">
+           <input type="file" name="file" accept=".csv">
+           <input type="submit" value=" - Enviar - ">
+       </form>
+'''
+    
 
 # Inicia o servidor flask
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True)  
