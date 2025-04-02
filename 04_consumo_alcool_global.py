@@ -34,8 +34,10 @@ html_template = '''
     <ul>
         <li><a href="/comparar"> Comparar </a></li>
         <li><a href="/upload_avengers"> Upload do CSV  </a></li>
-        <li><a href="/apagar_avengers"> Apagar Tabela Avengers  </a></li>
         <li><a href="/atribuir_paises_avengers"> Atribuir Paises  </a></li>
+        <li><a href="/abrir_avengers"> Abrir Tabela Avengers  </a></li>
+        <li><a href="/consultar_avenger"> consultar detalhes do Vingador  </a></li>
+        <li><a href="/apagar_avengers"> Apagar Tabela Avengers  </a></li>
         <li><a href="/avengers_vs_drinks"> V.A.A (Vingadores Alcoolicos Anonimos)  </a></li>
     </ul>        
 '''
@@ -127,7 +129,6 @@ def comparar():
 
         fig = px.scatter(df, x=eixo_x, y=eixo_y,title=f'Comparação entre {eixo_x} e {eixo_y}')
 
-
         fig.update_traces(textposition="top center")
         return fig.to_html() + '<br><a> href="/">voltar ao inicio</a>'
     
@@ -161,7 +162,7 @@ def upload_avenger():
        df_avengers.to_sql('avengers', conn, if_exists='replace', index=False)
        conn.commit()
        conn.close()
-       return '<h3>arquivo inserido com sucesso!</h3><a href='/'>voltar</a>'
+       return "<h3>arquivo inserido com sucesso!</h3><a href='/'>voltar</a>"
     return '''
        <h2>Upload do arquivo Avengers<h2>
        <form method="POST" enctype="multipart/form-data">
@@ -169,7 +170,65 @@ def upload_avenger():
            <input type="submit" value=" - Enviar - ">
        </form>
 '''
+@app.route('/apagar_avengers')
+def apagar_avengers():
+    conn = sqlite3.connect('C:/Users/noturno/Desktop/estenio/Sistema/consumo_alcool.db')
+    cursor = conn.cursor()
+
+    try:
+         cursor.execute('DROP TABLE IF EXISTS avengers')
+         conn.commit()
+         mensagem = "<h3>Tabela 'avengers' apagada com sucesso! </h3>"
+    except Exception as errinho: 
+        mensagem = f"<h3>Erro ao apagar a tabela: {str(errinho)}</h3>"
+
+
+    conn.close()
+    return mensagem + "<br><hr><br><a href='/'>voltar ao inicio</a>"
+
+
+@app.route('/atribuir_paises_avengers')
+def atribuir_paises_avengers():
+    conn = sqlite3.connect('C:/Users/noturno/Desktop/estenio/Sistema/consumo_alcool.db')
+    df_avengers = pd.read_sql_query('SELECT * FROM avengers', conn)
+    df_drinks = pd.read_sql_query('SELECT country FROM drinks', conn)
+
+    random.seed(42)
+    paises_possiveis = df_drinks['country'].unique()
+    df_avengers['country'] = [random.choice(paises_possiveis) for _ in range(len(df_avengers))]
+
+    df_avengers.to_sql('avengers', conn, if_exists="replace", index=False)
+    conn.commit()
+    conn.close()
+
+    return "<h3>Paises atribuidos aos vingadores com sucesso!</h3><br><hr><br><a href='/'>voltar ao inicio</a>"
+
+@app.route('/abrir_avengers')
+def abrir_avengers():
+    conn = sqlite3.connect('C:/Users/noturno/Desktop/estenio/Sistema/consumo_alcool.db')
+    try:
+        df_avengers = pd.read_sql_query('SELECT * FROM avengers', conn)
+    except Exception as e:
+        conn.close()
+        return f"<h3>Erro ao consultar a tabela: {str(e)}</h3><br><a href='/'>voltar ao inicio</a>"
+    conn.close()
+
+    if df_avengers.empty:
+        return "<h3>A tabela 'Avengers' está vazia ou não existe</h3<br><a href='/'>voltar ao inicio</a>"
     
+    return df_avengers.to_html(index=False) + "<br><a href='/'>voltar ao inicio</a>"
+
+
+
+
+
+
+@app.route('/consultar_avenger')
+def consultar_avenger():
+   conn = sqlite3.connect('C:/Users/noturno/Desktop/estenio/Sistema/consumo_alcool.db')
+   df_avengers = pd.read_sql_query('SELECT * FROM avengers', conn)
+   conn.close()
+   #vamos continuar daqui!!!!
 
 # Inicia o servidor flask
 if __name__ == '__main__':
